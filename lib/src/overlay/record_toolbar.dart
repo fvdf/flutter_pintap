@@ -4,32 +4,22 @@ import '../utils/constants.dart';
 import '../icons/pintap_icons.dart';
 import 'tool_button.dart';
 
-class PintapToolbar extends StatelessWidget {
-  final bool isSelectMode;
-  final bool isFreezeMode;
-  final int annotationCount;
-  final VoidCallback onToggleSelect;
-  final VoidCallback onToggleFreeze;
-  final VoidCallback onShowList;
-  final VoidCallback onCopy;
-  final VoidCallback onClear;
-  final VoidCallback onOpenRecord;
+class RecordToolbar extends StatelessWidget {
+  final bool isRecording;
+  final bool isPaused;
+  final VoidCallback onToggleRecord;
+  final VoidCallback onStop;
+  final VoidCallback onAddNote;
   final VoidCallback onClose;
-  final bool copySuccess;
 
-  const PintapToolbar({
+  const RecordToolbar({
     super.key,
-    required this.isSelectMode,
-    required this.isFreezeMode,
-    required this.annotationCount,
-    required this.onToggleSelect,
-    required this.onToggleFreeze,
-    required this.onShowList,
-    required this.onCopy,
-    required this.onClear,
-    required this.onOpenRecord,
+    required this.isRecording,
+    required this.isPaused,
+    required this.onToggleRecord,
+    required this.onStop,
+    required this.onAddNote,
     required this.onClose,
-    this.copySuccess = false,
   });
 
   @override
@@ -60,47 +50,33 @@ class PintapToolbar extends StatelessWidget {
             children: [
               const _DragHandle(),
               const _Divider(),
+              // Record/Pause button
               ToolButton(
-                icon: PintapIconType.record,
-                label: 'Record',
+                icon: isRecording && !isPaused
+                    ? PintapIconType.pause
+                    : PintapIconType.record,
+                label: isRecording && !isPaused ? 'Pause' : 'Record',
+                isActive: isRecording && !isPaused,
+                onTap: onToggleRecord,
+              ),
+              const SizedBox(width: 4),
+              // Stop button
+              ToolButton(
+                icon: PintapIconType.stop,
+                label: 'Stop',
                 isActive: false,
-                onTap: onOpenRecord,
-              ),
-              const SizedBox(width: 4),
-              ToolButton(
-                icon: PintapIconType.select,
-                label: 'Select',
-                isActive: isSelectMode,
-                onTap: onToggleSelect,
-              ),
-              const SizedBox(width: 4),
-              ToolButton(
-                icon: PintapIconType.freeze,
-                label: isFreezeMode ? 'Resume' : 'Freeze',
-                isActive: isFreezeMode,
-                onTap: onToggleFreeze,
+                onTap: onStop,
               ),
               const _Divider(),
+              // Add Note button (only enabled if paused or recording)
+              // Actually we want to allow selecting widget to add note,
+              // or just add note button.
+              // For now let's just trigger a mode.
               ToolButton(
-                icon: copySuccess ? PintapIconType.check : PintapIconType.copy,
-                label: 'Copy ($annotationCount)',
-                onTap: onCopy,
-                isActive: copySuccess,
-              ),
-              const SizedBox(width: 4),
-              ToolButton(
-                icon: PintapIconType.list,
-                label: 'List',
-                isActive: false,
-                onTap: onShowList,
-              ),
-              const SizedBox(width: 4),
-              ToolButton(
-                icon: PintapIconType.delete,
-                label: 'Clear All',
-                isActive: false,
-                onTap: onClear,
-                isDestructive: true,
+                icon: PintapIconType.note,
+                label: 'Note',
+                isActive: isPaused,
+                onTap: onAddNote,
               ),
               const SizedBox(width: 4),
               ToolButton(
