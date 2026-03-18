@@ -12,6 +12,7 @@ class PintapColors {
   static const selectActive = Color(0xFF3B82F6); // Blue
   static const freezeActive = Color(0xFFF59E0B); // Amber
   static const successGreen = Color(0xFF10B981); // Emerald
+  static const errorRed = Color(0xFFEF4444); // Red
 
   // Text
   static const textPrimary = Color(0xFF1F2937); // Dark gray

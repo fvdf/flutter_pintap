@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'overlay/fab_button.dart';
 import 'overlay/toolbar.dart';
+import 'overlay/record_toolbar.dart';
+import 'pintap_observer.dart';
+import 'models/user_journey.dart';
 import 'overlay/annotation_overlay.dart';
 import 'overlay/note_dialog.dart';
 import 'overlay/annotation_list_modal.dart';
@@ -44,6 +47,11 @@ class _FlutterPintapState extends State<FlutterPintap> {
   bool _copySuccess = false;
   bool _showAnnotationList = false;
 
+  bool _isRecordMode = false;
+  bool _isRecording = false;
+  bool _isRecordingPaused = false;
+  final List<JourneyEvent> _journeyEvents = [];
+
   final List<Annotation> _annotations = [];
   WidgetData? _selectedWidgetData;
   WidgetData? _hoveredWidgetData;
@@ -55,6 +63,25 @@ class _FlutterPintapState extends State<FlutterPintap> {
   void initState() {
     super.initState();
     _picker = WidgetPicker(verbose: widget.verbose);
+    PintapObserver.onRouteChanged = _handleRouteChanged;
+  }
+
+  @override
+  void dispose() {
+    PintapObserver.onRouteChanged = null;
+    super.dispose();
+  }
+
+  void _handleRouteChanged(String routeName) {
+    if (_isRecording && !_isRecordingPaused) {
+      setState(() {
+        _journeyEvents.add(JourneyEvent(
+          type: JourneyEventType.pageChange,
+          createdAt: DateTime.now(),
+          routeName: routeName,
+        ));
+      });
+    }
   }
 
   @override
@@ -97,6 +124,90 @@ class _FlutterPintapState extends State<FlutterPintap> {
       _annotations.clear();
       _selectedWidgetData = null;
     });
+  }
+
+  void _openRecordMode() {
+    setState(() {
+      _isRecordMode = true;
+      _isSelectMode = false;
+      _isOpen = true; // Toolbar must be open
+    });
+  }
+
+  void _closeRecordMode() {
+    setState(() {
+      _isRecordMode = false;
+      _isRecording = false;
+      _isRecordingPaused = false;
+      _journeyEvents.clear();
+    });
+  }
+
+  void _toggleRecord() {
+    if (!_isRecording) {
+      // Start recording
+      setState(() {
+        _isRecording = true;
+        _isRecordingPaused = false;
+      });
+    } else if (!_isRecordingPaused) {
+      // Pause recording
+      setState(() {
+        _isRecordingPaused = true;
+      });
+    } else {
+      // Resume recording
+      setState(() {
+        _isRecordingPaused = false;
+        _isSelectMode = false; // exit note selection mode if any
+      });
+    }
+  }
+
+  void _stopRecord() {
+    // Finish recording, prompt for final note
+    setState(() {
+      _isRecordingPaused = true;
+      _isSelectMode = false;
+      // We can use a dummy widget data for the final note prompt, or handle final note separately.
+      // We will show a NoteDialog with a dummy WidgetData, and save it as the final note.
+      _selectedWidgetData = const WidgetData(
+        type: "Journey Complete",
+        file: "User Journey",
+        line: 0,
+      );
+    });
+  }
+
+  void _addRecordNote() {
+    if (_isRecordingPaused) {
+      // Enter select mode to pick a widget to note on
+      setState(() {
+        _isSelectMode = true;
+      });
+    }
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    if (_isRecording && !_isRecordingPaused) {
+      // Record widget tap
+      final position = event.position;
+      final result = _findWidgetAtPosition(position);
+
+      if (result.element != null) {
+        final data = _extractor.extractWidgetData(
+          result.element!,
+          childWidgets: result.childWidgets,
+        );
+        setState(() {
+          _journeyEvents.add(JourneyEvent(
+            type: JourneyEventType.widgetTap,
+            createdAt: DateTime.now(),
+            widgetData: data,
+          ));
+        });
+      }
+    }
   }
 
   void _handleTap(TapDownDetails details) {
@@ -147,6 +258,63 @@ class _FlutterPintapState extends State<FlutterPintap> {
 
   void _saveAnnotation(String note) {
     if (_selectedWidgetData != null) {
+      if (_isRecordMode && _isRecordingPaused && _selectedWidgetData!.type == "Journey Complete") {
+        // Saving final journey note
+        final journey = UserJourney(
+          events: List.from(_journeyEvents),
+          finalNote: note,
+          createdAt: DateTime.now(),
+        );
+
+        final generator = MarkdownGenerator();
+        final text = generator.generateJourney(journey);
+
+        setState(() {
+          // Add as a special annotation to the list
+          _annotations.add(Annotation(
+            id: DateTime.now().toIso8601String(),
+            widgetData: const WidgetData(
+              type: "User Journey",
+              file: "timeline",
+              line: 0,
+            ),
+            note: "```markdown\n$text\n```",
+            index: _annotations.length + 1,
+            createdAt: DateTime.now(),
+          ));
+          _selectedWidgetData = null;
+          _isRecordMode = false;
+          _isRecording = false;
+          _isRecordingPaused = false;
+          _journeyEvents.clear();
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Journey added to annotations list'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        return;
+      }
+
+      if (_isRecordMode && _isRecordingPaused) {
+        // Saving a note on a widget during paused journey
+        setState(() {
+          _journeyEvents.add(JourneyEvent(
+            type: JourneyEventType.note,
+            createdAt: DateTime.now(),
+            widgetData: _selectedWidgetData,
+            note: note,
+          ));
+          _selectedWidgetData = null;
+          _isSelectMode = false; // exit selection mode
+        });
+        return;
+      }
+
       if (_annotations.length >= _maxAnnotations) {
         _selectedWidgetData = null;
         _showMaxLimitWarning();
@@ -264,7 +432,11 @@ class _FlutterPintapState extends State<FlutterPintap> {
           key: _childKey,
           child: TickerMode(
             enabled: !_isFreezeMode,
-            child: widget.child,
+            child: Listener(
+              onPointerUp: _isRecording && !_isRecordingPaused ? _handlePointerUp : null,
+              behavior: HitTestBehavior.deferToChild,
+              child: widget.child,
+            ),
           ),
         ),
 
@@ -316,18 +488,28 @@ class _FlutterPintapState extends State<FlutterPintap> {
                 child: GestureDetector(
                   onPanUpdate: _onPanUpdate,
                   child: _isOpen
-                      ? PintapToolbar(
-                          isSelectMode: _isSelectMode,
-                          isFreezeMode: _isFreezeMode,
-                          annotationCount: _annotations.length,
-                          onToggleSelect: _toggleSelect,
-                          onToggleFreeze: _toggleFreeze,
-                          onShowList: _toggleAnnotationList,
-                          onCopy: _copy,
-                          onClear: _clear,
-                          onClose: _closeToolbar,
-                          copySuccess: _copySuccess,
-                        )
+                      ? (_isRecordMode
+                          ? RecordToolbar(
+                              isRecording: _isRecording,
+                              isPaused: _isRecordingPaused,
+                              onToggleRecord: _toggleRecord,
+                              onStop: _stopRecord,
+                              onAddNote: _addRecordNote,
+                              onClose: _closeRecordMode,
+                            )
+                          : PintapToolbar(
+                              isSelectMode: _isSelectMode,
+                              isFreezeMode: _isFreezeMode,
+                              annotationCount: _annotations.length,
+                              onToggleSelect: _toggleSelect,
+                              onToggleFreeze: _toggleFreeze,
+                              onShowList: _toggleAnnotationList,
+                              onCopy: _copy,
+                              onClear: _clear,
+                              onOpenRecord: _openRecordMode,
+                              onClose: _closeToolbar,
+                              copySuccess: _copySuccess,
+                            ))
                       : PintapFab(
                           onTap: _toggleOpen,
                           badgeCount: _annotations.length,

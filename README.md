@@ -48,6 +48,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorObservers: [PintapObserver()], // Required for User Journey feature
       home: FlutterPintap(
         enabled: kDebugMode,  // Only in debug mode
         child: const HomeScreen(),
@@ -68,6 +69,7 @@ class MyApp extends StatelessWidget {
 | **Annotation List** | View all annotations, delete individually (max 10) |
 | **Markdown Export** | Copy structured markdown for AI agents |
 | **Freeze Mode** | Stop animations completely for easier selection |
+| **User Journey** | Record page navigations and widget clicks into a chronologic markdown timeline |
 | **Zero Dependencies** | Pure Flutter SDK only |
 
 ## Usage
@@ -79,6 +81,7 @@ class MyApp extends StatelessWidget {
 3. **Add Note** — Enter your feedback in the dialog
 4. **Manage List** — Click **List** to view/delete annotations
 5. **Copy Markdown** — Click **Copy** and paste to your AI agent
+6. **Record User Journey** — Click **Record** to start tracking page changes and clicks. You can pause anytime to add specific notes.
 
 ## Markdown Output
 

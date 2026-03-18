@@ -149,6 +149,27 @@ class PintapIconPainter extends CustomPainter {
         canvas.drawPath(path, paint);
         break;
 
+      case PintapIconType.record:
+        paint.style = PaintingStyle.fill;
+        if (isActive) paint.color = PintapColors.errorRed;
+        canvas.drawCircle(const Offset(10, 10), 6, paint);
+        break;
+
+      case PintapIconType.pause:
+        paint.style = PaintingStyle.fill;
+        if (isActive) paint.color = PintapColors.freezeActive;
+        canvas.drawRect(const Rect.fromLTWH(6, 5, 3, 10), paint);
+        canvas.drawRect(const Rect.fromLTWH(11, 5, 3, 10), paint);
+        break;
+
+      case PintapIconType.stop:
+        paint.style = PaintingStyle.fill;
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                const Rect.fromLTWH(6, 6, 8, 8), const Radius.circular(1)),
+            paint);
+        break;
+
       case PintapIconType.delete:
         // Trash icon
         path.moveTo(3, 5);
@@ -200,6 +221,9 @@ enum PintapIconType {
   check,
   list,
   delete,
+  record,
+  pause,
+  stop,
 }
 
 class PintapIcon extends StatelessWidget {
