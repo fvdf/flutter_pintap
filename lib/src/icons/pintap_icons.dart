@@ -102,6 +102,14 @@ class PintapIconPainter extends CustomPainter {
         canvas.drawPath(path, paint);
         break;
 
+      case PintapIconType.close:
+        path.moveTo(5, 5);
+        path.lineTo(15, 15);
+        path.moveTo(15, 5);
+        path.lineTo(5, 15);
+        canvas.drawPath(path, paint);
+        break;
+
       case PintapIconType.logo:
         // Centered hexagon (canvas 20x20, center at 10,10)
         path.moveTo(10, 1);
@@ -187,6 +195,7 @@ enum PintapIconType {
   freeze,
   copy,
   clear,
+  close,
   logo,
   check,
   list,
