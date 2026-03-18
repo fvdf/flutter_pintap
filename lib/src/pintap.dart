@@ -83,10 +83,17 @@ class _FlutterPintapState extends State<FlutterPintap> {
     });
   }
 
-  void _clear() {
+  void _closeToolbar() {
     setState(() {
       _isSelectMode = false;
       _isOpen = false;
+      _selectedWidgetData = null;
+    });
+  }
+
+  void _clear() {
+    setState(() {
+      _isSelectMode = false;
       _annotations.clear();
       _selectedWidgetData = null;
     });
@@ -266,27 +273,30 @@ class _FlutterPintapState extends State<FlutterPintap> {
           child: Stack(
             children: [
               // 2. Highlight Overlay (ignored by pointer)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnnotationOverlay(annotations: _annotations),
+              if (_isOpen)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnnotationOverlay(annotations: _annotations),
+                  ),
                 ),
-              ),
 
               // 2-1. Hovered widget highlight (light color)
-              if (_hoveredWidgetData != null &&
+              if (_isOpen &&
+                  _hoveredWidgetData != null &&
                   _hoveredWidgetData!.size != null &&
                   _selectedWidgetData == null)
                 ..._buildHighlight(_hoveredWidgetData!, Colors.grey.shade600,
                     Colors.grey.shade700),
 
               // 2-2. Selected widget highlight (blue)
-              if (_selectedWidgetData != null &&
+              if (_isOpen &&
+                  _selectedWidgetData != null &&
                   _selectedWidgetData!.size != null)
                 ..._buildHighlight(
                     _selectedWidgetData!, Colors.blue, Colors.blue),
 
               // 3. Selection Layer (captures tap and hover)
-              if (_isSelectMode)
+              if (_isOpen && _isSelectMode)
                 Positioned.fill(
                   child: MouseRegion(
                     onHover: _handleHover,
@@ -315,6 +325,7 @@ class _FlutterPintapState extends State<FlutterPintap> {
                           onShowList: _toggleAnnotationList,
                           onCopy: _copy,
                           onClear: _clear,
+                          onClose: _closeToolbar,
                           copySuccess: _copySuccess,
                         )
                       : PintapFab(

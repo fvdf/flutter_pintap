@@ -13,6 +13,7 @@ class PintapToolbar extends StatelessWidget {
   final VoidCallback onShowList;
   final VoidCallback onCopy;
   final VoidCallback onClear;
+  final VoidCallback onClose;
   final bool copySuccess;
 
   const PintapToolbar({
@@ -25,6 +26,7 @@ class PintapToolbar extends StatelessWidget {
     required this.onShowList,
     required this.onCopy,
     required this.onClear,
+    required this.onClose,
     this.copySuccess = false,
   });
 
@@ -85,11 +87,18 @@ class PintapToolbar extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               ToolButton(
-                icon: PintapIconType.clear,
-                label: 'Clear',
+                icon: PintapIconType.delete,
+                label: 'Clear All',
                 isActive: false,
                 onTap: onClear,
                 isDestructive: true,
+              ),
+              const SizedBox(width: 4),
+              ToolButton(
+                icon: PintapIconType.close,
+                label: 'Close',
+                isActive: false,
+                onTap: onClose,
               ),
             ],
           ),
