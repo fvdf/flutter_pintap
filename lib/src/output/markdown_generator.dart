@@ -3,6 +3,31 @@ import '../models/user_journey.dart';
 import 'package:intl/intl.dart';
 
 class MarkdownGenerator {
+  /// Sanitizes a string to prevent Markdown/HTML injection while preserving
+  /// readability. This prevents a malicious or badly formatted note from
+  /// breaking the structural layout of the generated markdown.
+  String _sanitizeMarkdown(String input) {
+    if (input.isEmpty) return input;
+
+    // Replace newlines with <br> to preserve multiline notes within a single markdown block
+    String sanitized = input.replaceAll('\r\n', '<br>').replaceAll('\n', '<br>');
+
+    // Escape standard markdown special characters
+    // Using a regex to match characters: \ ` * _ { } [ ] ( ) # + - . ! |
+    sanitized = sanitized.replaceAllMapped(
+      RegExp(r'([\\`\*_{}\[\]()#\+\-\.!\|])'),
+      (match) => '\\${match.group(1)}',
+    );
+
+    // Escape HTML tags to prevent HTML injection
+    sanitized = sanitized.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+    // Restore the <br> tags we just converted to &lt;br&gt;
+    sanitized = sanitized.replaceAll('&lt;br&gt;', '<br>');
+
+    return sanitized;
+  }
+
   String generate(List<Annotation> annotations) {
     // If empty
     if (annotations.isEmpty) {
@@ -32,14 +57,14 @@ class MarkdownGenerator {
             '- 📐 Size: ${w.size!.width.toInt()}×${w.size!.height.toInt()}');
       }
       if (w.textContent != null) {
-        buffer.writeln('- 🔤 Content: "${w.textContent}"');
+        buffer.writeln('- 🔤 Content: "${_sanitizeMarkdown(w.textContent!)}"');
       }
 
       // Properties - show top 5 or all?
       // Doc says "main properties (max 5)"
       final importantProps = w.properties.entries.take(5);
       for (final prop in importantProps) {
-        buffer.writeln('- 🎨 ${prop.key}: ${prop.value}');
+        buffer.writeln('- 🎨 ${prop.key}: ${_sanitizeMarkdown(prop.value.toString())}');
       }
 
       if (w.parentChain.isNotEmpty) {
@@ -54,7 +79,7 @@ class MarkdownGenerator {
         }
       }
 
-      buffer.writeln('- 💬 "${a.note}"');
+      buffer.writeln('- 💬 "${_sanitizeMarkdown(a.note)}"');
       buffer.writeln();
     }
 
@@ -71,7 +96,7 @@ class MarkdownGenerator {
 
     if (journey.finalNote.isNotEmpty) {
       buffer.writeln('### Final Note');
-      buffer.writeln('> ${journey.finalNote}');
+      buffer.writeln('> ${_sanitizeMarkdown(journey.finalNote)}');
       buffer.writeln();
     }
 
@@ -84,14 +109,14 @@ class MarkdownGenerator {
 
       switch (event.type) {
         case JourneyEventType.pageChange:
-          buffer.writeln('**[$timeStr]** 📄 Navigated to `${event.routeName ?? 'unknown route'}`');
+          buffer.writeln('**[$timeStr]** 📄 Navigated to `${_sanitizeMarkdown(event.routeName ?? 'unknown route')}`');
           break;
         case JourneyEventType.widgetTap:
           final w = event.widgetData;
           if (w != null) {
             String textDetail = '';
             if (w.textContent != null && w.textContent!.isNotEmpty) {
-              textDetail = ' ("${w.textContent}")';
+              textDetail = ' ("${_sanitizeMarkdown(w.textContent!)}")';
             } else if (w.type == 'ElevatedButton' || w.type == 'TextButton' || w.type == 'OutlinedButton') {
                 if (w.childWidgets.isNotEmpty) {
                     final child = w.childWidgets.firstWhere((c) => c.type == 'Text', orElse: () => w.childWidgets.first);
@@ -107,7 +132,7 @@ class MarkdownGenerator {
           break;
         case JourneyEventType.note:
           buffer.writeln('**[$timeStr]** 💬 Note added on `${event.widgetData?.type ?? 'unknown'}`:');
-          buffer.writeln('  > ${event.note}');
+          buffer.writeln('  > ${_sanitizeMarkdown(event.note ?? '')}');
           break;
       }
     }
