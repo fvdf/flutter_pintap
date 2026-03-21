@@ -35,8 +35,9 @@ class RecordToolbar extends StatelessWidget {
             color: PintapColors.surfaceGlass,
             borderRadius: BorderRadius.circular(PintapConstants.toolbarRadius),
             border: Border.all(
-                color: PintapColors.borderStrong,
-                width: PintapConstants.toolbarBorderWidth),
+              color: PintapColors.borderStrong,
+              width: PintapConstants.toolbarBorderWidth,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(15),
@@ -68,10 +69,7 @@ class RecordToolbar extends StatelessWidget {
                 onTap: onStop,
               ),
               const _Divider(),
-              // Add Note button (only enabled if paused or recording)
-              // Actually we want to allow selecting widget to add note,
-              // or just add note button.
-              // For now let's just trigger a mode.
+              // Add Note button (enabled if paused)
               ToolButton(
                 icon: PintapIconType.note,
                 label: 'Note',
